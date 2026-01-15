@@ -22,11 +22,12 @@
         <framework src="AVFoundation.framework"/>
         <framework src="UIKit.framework"/>
         <podspec>
-			<config>
-				<source url="https://github.com/CocoaPods/Specs.git"/>
-			</config>
+      <config>
+        <source url="https://github.com/CocoaPods/Specs.git"/>
+      </config>
             <pods use-frameworks="true">
-                <pod name="GoogleMLKit/BarcodeScanning"/>
+            <pod name="GoogleMLKit/BarcodeScanning" spec="~> 9.0.0"/>
+            <pod name="GoogleUtilities/UserDefaults" spec="~> 8.0"/>
             </pods>
         </podspec>
         <header-file src="src/ios/CDViOSScanner.h"/>
@@ -62,7 +63,6 @@
 
         <config-file target="res/values/strings.xml" parent="/*">
             <string name="ok">OK</string>
-            <string name="permission_camera_rationale">Access to the camera is needed for detection</string>
             <string name="no_camera_permission">This application cannot run because it does not have the camera permission.  The application will now exit.</string>
             <string name="low_storage_error">Face detector dependencies cannot be downloaded due to low device storage</string>
             <string name="title_activity_main">Barcode Reader Activity</string>
@@ -103,6 +103,7 @@
 
         <framework src="com.google.android.gms:play-services-vision:17.0.2" />
         <framework src="com.google.mlkit:barcode-scanning:16.0.3"/>
+    <framework src="com.google.android.material:material:1.9.0" />
 
         <framework src="androidx.camera:camera-core:1.0.0-beta05"/>
         <framework src="androidx.camera:camera-camera2:1.0.0-beta05"/>
