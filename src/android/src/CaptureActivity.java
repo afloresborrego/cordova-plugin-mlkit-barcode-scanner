@@ -301,7 +301,7 @@ public class CaptureActivity extends AppCompatActivity implements SurfaceHolder.
                 .build();
 
         CameraSelector cameraSelector = new CameraSelector.Builder()
-                .requireLensFacing(CameraSelector.LENS_FACING_FRONT)
+                .requireLensFacing(CameraSelector.LENS_FACING_BACK)
                 .build();
 
 
