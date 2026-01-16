@@ -471,18 +471,57 @@ static inline double radians (double degrees) {return degrees * M_PI/180;}
 }
 
 - (AVCaptureDeviceInput *)captureDeviceInputForPosition:(AVCaptureDevicePosition)desiredPosition {
-    for (AVCaptureDevice *device in [AVCaptureDevice devicesWithMediaType:AVMediaTypeVideo]) {
-        if (device.position == desiredPosition) {
-            NSError *error = nil;
-            AVCaptureDeviceInput *input = [AVCaptureDeviceInput deviceInputWithDevice:device
-                                                                                error:&error];
-            if (error) {
-                NSLog(@"Could not initialize for AVMediaTypeVideo for device %@", device);
-            } else if ([self.session canAddInput:input]) {
-                return input;
+    AVCaptureDevice *selectedDevice = nil;
+    
+    // Para iOS 13+ intentar usar ultra wide automáticamente en cámara trasera
+    if (@available(iOS 13.0, *)) {
+        NSArray<AVCaptureDeviceType> *deviceTypes;
+        
+        if (desiredPosition == AVCaptureDevicePositionBack) {
+            // Intentar ultra wide primero, luego wide normal como fallback
+            deviceTypes = @[AVCaptureDeviceTypeBuiltInUltraWideCamera,
+                          AVCaptureDeviceTypeBuiltInWideAngleCamera];
+        } else {
+            // Cámara frontal usa wide angle normal
+            deviceTypes = @[AVCaptureDeviceTypeBuiltInWideAngleCamera];
+        }
+        
+        AVCaptureDeviceDiscoverySession *discoverySession = 
+            [AVCaptureDeviceDiscoverySession discoverySessionWithDeviceTypes:deviceTypes
+                                                                  mediaType:AVMediaTypeVideo
+                                                                   position:desiredPosition];
+        
+        // Tomar el primer dispositivo disponible (ultra wide si existe, sino wide normal)
+        if (discoverySession.devices.count > 0) {
+            selectedDevice = discoverySession.devices.firstObject;
+            NSLog(@"📷 Selected camera: %@", selectedDevice.localizedName);
+        }
+    }
+    
+    // Fallback para iOS < 13 o si no se encontró ninguna cámara
+    if (!selectedDevice) {
+        for (AVCaptureDevice *device in [AVCaptureDevice devicesWithMediaType:AVMediaTypeVideo]) {
+            if (device.position == desiredPosition) {
+                selectedDevice = device;
+                NSLog(@"📷 Fallback camera: %@", device.localizedName);
+                break;
             }
         }
     }
+    
+    // Crear el input del dispositivo seleccionado
+    if (selectedDevice) {
+        NSError *error = nil;
+        AVCaptureDeviceInput *input = [AVCaptureDeviceInput deviceInputWithDevice:selectedDevice
+                                                                            error:&error];
+        if (error) {
+            NSLog(@"❌ Could not initialize camera: %@", error);
+            return nil;
+        } else if ([self.session canAddInput:input]) {
+            return input;
+        }
+    }
+    
     return nil;
 }
 
