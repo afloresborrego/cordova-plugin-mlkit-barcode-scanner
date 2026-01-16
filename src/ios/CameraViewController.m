@@ -470,17 +470,37 @@ static inline double radians (double degrees) {return degrees * M_PI/180;}
     [self.session commitConfiguration];
 }
 
+- (BOOL)deviceHasMacroCapability {
+    if (@available(iOS 15.0, *)) {
+        AVCaptureDevice *ultraWide = [AVCaptureDevice defaultDeviceWithDeviceType:AVCaptureDeviceTypeBuiltInUltraWideCamera
+                                                                        mediaType:AVMediaTypeVideo
+                                                                         position:AVCaptureDevicePositionBack];
+        if (ultraWide != nil) {
+            return [ultraWide isGeometricDistortionCorrectionSupported];
+        }
+    }
+    return NO;
+}
+
 - (AVCaptureDeviceInput *)captureDeviceInputForPosition:(AVCaptureDevicePosition)desiredPosition {
     AVCaptureDevice *selectedDevice = nil;
     
-    // Para iOS 13+ intentar usar ultra wide automáticamente en cámara trasera
+    // Para iOS 13+
     if (@available(iOS 13.0, *)) {
         NSArray<AVCaptureDeviceType> *deviceTypes;
         
         if (desiredPosition == AVCaptureDevicePositionBack) {
-            // Intentar ultra wide primero, luego wide normal como fallback
-            deviceTypes = @[AVCaptureDeviceTypeBuiltInUltraWideCamera,
-                          AVCaptureDeviceTypeBuiltInWideAngleCamera];
+            // Verificar si tiene macro antes de usar ultra wide
+            if ([self deviceHasMacroCapability]) {
+                // Tiene macro → Usar ultra wide (ideal para QR de cerca)
+                deviceTypes = @[AVCaptureDeviceTypeBuiltInUltraWideCamera,
+                              AVCaptureDeviceTypeBuiltInWideAngleCamera];
+                NSLog(@"🎯 Device has MACRO - Using Ultra Wide Camera");
+            } else {
+                // NO tiene macro → Usar solo wide normal
+                deviceTypes = @[AVCaptureDeviceTypeBuiltInWideAngleCamera];
+                NSLog(@"📸 No macro available - Using Wide Camera");
+            }
         } else {
             // Cámara frontal usa wide angle normal
             deviceTypes = @[AVCaptureDeviceTypeBuiltInWideAngleCamera];
@@ -491,10 +511,10 @@ static inline double radians (double degrees) {return degrees * M_PI/180;}
                                                                   mediaType:AVMediaTypeVideo
                                                                    position:desiredPosition];
         
-        // Tomar el primer dispositivo disponible (ultra wide si existe, sino wide normal)
+        // Tomar el primer dispositivo disponible
         if (discoverySession.devices.count > 0) {
             selectedDevice = discoverySession.devices.firstObject;
-            NSLog(@"📷 Selected camera: %@", selectedDevice.localizedName);
+            NSLog(@"✅ Selected camera: %@", selectedDevice.localizedName);
         }
     }
     
