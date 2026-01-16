@@ -472,16 +472,26 @@ static inline double radians (double degrees) {return degrees * M_PI/180;}
 
 - (BOOL)deviceHasMacroCapability {
     if (@available(iOS 15.0, *)) {
-        AVCaptureDevice *device =
-        [AVCaptureDevice defaultDeviceWithDeviceType:AVCaptureDeviceTypeBuiltInWideAngleCamera
-                                           mediaType:AVMediaTypeVideo
-                                            position:AVCaptureDevicePositionBack];
-
-        return device.isAutoMacroSupported;
+        AVCaptureDevice *ultraWide = [AVCaptureDevice defaultDeviceWithDeviceType:AVCaptureDeviceTypeBuiltInUltraWideCamera
+                                                                        mediaType:AVMediaTypeVideo
+                                                                         position:AVCaptureDevicePositionBack];
+        if (ultraWide == nil) {
+            return NO;
+        }
+        
+        // Verificar si ALGÚN formato soporta macro (geometric distortion correction)
+        for (AVCaptureDeviceFormat *format in ultraWide.formats) {
+            if (format.isGeometricDistortionCorrectionSupported) {
+                NSLog(@"✅ Macro format detected in ultra wide camera");
+                return YES;
+            }
+        }
+        
+        NSLog(@"⚠️ Ultra wide exists but NO macro formats available");
+        return NO;
     }
     return NO;
 }
-
 
 - (AVCaptureDeviceInput *)captureDeviceInputForPosition:(AVCaptureDevicePosition)desiredPosition {
     AVCaptureDevice *selectedDevice = nil;
