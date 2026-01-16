@@ -446,7 +446,6 @@ static inline double radians (double degrees) {return degrees * M_PI/180;}
     [delegate closeScanner];
 }
 
-
 - (void)updateCameraSelection {
     [self.session beginConfiguration];
 
@@ -456,91 +455,72 @@ static inline double radians (double degrees) {return degrees * M_PI/180;}
         [self.session removeInput:oldInput];
     }
 
-    AVCaptureDevicePosition desiredPosition = AVCaptureDevicePositionBack;
-    AVCaptureDeviceInput *input = [self captureDeviceInputForPosition:desiredPosition];
+    AVCaptureDeviceInput *input = [self getBestCameraInput];
+    
     if (!input) {
         // Failed, restore old inputs
         for (AVCaptureInput *oldInput in oldInputs) {
             [self.session addInput:oldInput];
         }
     } else {
-        // Succeeded, set input and update connection states
+        // Succeeded, set input
         [self.session addInput:input];
     }
     [self.session commitConfiguration];
 }
 
-- (BOOL)deviceHasMacroCapability {
-    if (@available(iOS 15.0, *)) {
-        AVCaptureDevice *ultraWide = [AVCaptureDevice defaultDeviceWithDeviceType:AVCaptureDeviceTypeBuiltInUltraWideCamera
-                                                                        mediaType:AVMediaTypeVideo
-                                                                         position:AVCaptureDevicePositionBack];
-        if (ultraWide == nil) {
-            return NO;
-        }
-        
-        // Verificar si ALGÚN formato soporta macro (geometric distortion correction)
-        for (AVCaptureDeviceFormat *format in ultraWide.formats) {
-            if (format.isGeometricDistortionCorrectionSupported) {
-                NSLog(@"✅ Macro format detected in ultra wide camera");
-                return YES;
-            }
-        }
-        
-        NSLog(@"⚠️ Ultra wide exists but NO macro formats available");
-        return NO;
-    }
-    return NO;
-}
-
-- (AVCaptureDeviceInput *)captureDeviceInputForPosition:(AVCaptureDevicePosition)desiredPosition {
+- (AVCaptureDeviceInput *)getBestCameraInput {
     AVCaptureDevice *selectedDevice = nil;
     
-    // Para iOS 13+
     if (@available(iOS 13.0, *)) {
-        NSArray<AVCaptureDeviceType> *deviceTypes;
+        // OPCIÓN 1: Dispositivos virtuales (iPhone 13 Pro+)
+        // Estos cambian AUTOMÁTICAMENTE a ultra wide para macro
         
-        if (desiredPosition == AVCaptureDevicePositionBack) {
-            // Verificar si tiene macro antes de usar ultra wide
-            if ([self deviceHasMacroCapability]) {
-                // Tiene macro → Usar ultra wide (ideal para QR de cerca)
-                deviceTypes = @[AVCaptureDeviceTypeBuiltInUltraWideCamera,
-                              AVCaptureDeviceTypeBuiltInWideAngleCamera];
-                NSLog(@"🎯 Device has MACRO - Using Ultra Wide Camera");
-            } else {
-                // NO tiene macro → Usar solo wide normal
-                deviceTypes = @[AVCaptureDeviceTypeBuiltInWideAngleCamera];
-                NSLog(@"📸 No macro available - Using Wide Camera");
-            }
+        // Triple Camera (iPhone 13 Pro+, 14 Pro+, 15 Pro+, 16 Pro+)
+        selectedDevice = [AVCaptureDevice defaultDeviceWithDeviceType:AVCaptureDeviceTypeBuiltInTripleCamera
+                                                             mediaType:AVMediaTypeVideo
+                                                              position:AVCaptureDevicePositionBack];
+        
+        if (selectedDevice) {
+            NSLog(@"✅ Using TripleCamera (auto macro support)");
         } else {
-            // Cámara frontal usa wide angle normal
-            deviceTypes = @[AVCaptureDeviceTypeBuiltInWideAngleCamera];
+            // Dual Wide Camera (iPhone 11, 12, 13, 14, 15, 16 no-Pro)
+            selectedDevice = [AVCaptureDevice defaultDeviceWithDeviceType:AVCaptureDeviceTypeBuiltInDualWideCamera
+                                                                mediaType:AVMediaTypeVideo
+                                                                 position:AVCaptureDevicePositionBack];
+            
+            if (selectedDevice) {
+                NSLog(@"✅ Using DualWideCamera (limited macro)");
+            } else {
+                // Fallback: Ultra Wide manual (iPhone con ultra wide pero sin virtual device)
+                selectedDevice = [AVCaptureDevice defaultDeviceWithDeviceType:AVCaptureDeviceTypeBuiltInUltraWideCamera
+                                                                    mediaType:AVMediaTypeVideo
+                                                                     position:AVCaptureDevicePositionBack];
+                
+                if (selectedDevice) {
+                    NSLog(@"⚠️ Using UltraWide (no auto macro switching)");
+                } else {
+                    // Último fallback: Wide normal
+                    selectedDevice = [AVCaptureDevice defaultDeviceWithDeviceType:AVCaptureDeviceTypeBuiltInWideAngleCamera
+                                                                        mediaType:AVMediaTypeVideo
+                                                                         position:AVCaptureDevicePositionBack];
+                    NSLog(@"📸 Using WideAngle (standard camera)");
+                }
+            }
         }
-        
-        AVCaptureDeviceDiscoverySession *discoverySession = 
-            [AVCaptureDeviceDiscoverySession discoverySessionWithDeviceTypes:deviceTypes
-                                                                  mediaType:AVMediaTypeVideo
-                                                                   position:desiredPosition];
-        
-        // Tomar el primer dispositivo disponible
-        if (discoverySession.devices.count > 0) {
-            selectedDevice = discoverySession.devices.firstObject;
-            NSLog(@"✅ Selected camera: %@", selectedDevice.localizedName);
-        }
-    }
-    
-    // Fallback para iOS < 13 o si no se encontró ninguna cámara
-    if (!selectedDevice) {
-        for (AVCaptureDevice *device in [AVCaptureDevice devicesWithMediaType:AVMediaTypeVideo]) {
-            if (device.position == desiredPosition) {
+    } else {
+        // iOS < 13: usar el método legacy
+        NSArray *devices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeVideo];
+        for (AVCaptureDevice *device in devices) {
+            if (device.position == AVCaptureDevicePositionBack) {
                 selectedDevice = device;
-                NSLog(@"📷 Fallback camera: %@", device.localizedName);
+                NSLog(@"📷 Legacy: Using back camera");
                 break;
             }
         }
     }
     
-    // Crear el input del dispositivo seleccionado
+    // Crear el input
     if (selectedDevice) {
         NSError *error = nil;
         AVCaptureDeviceInput *input = [AVCaptureDeviceInput deviceInputWithDevice:selectedDevice
@@ -555,7 +535,6 @@ static inline double radians (double degrees) {return degrees * M_PI/180;}
     
     return nil;
 }
-
 
 
 @end
