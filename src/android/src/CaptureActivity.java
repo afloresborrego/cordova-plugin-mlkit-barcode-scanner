@@ -12,7 +12,7 @@ import android.graphics.Paint;
 import android.graphics.PixelFormat;
 import android.graphics.PorterDuff;
 import android.graphics.RectF;
-import android.os.Bundle;f
+import android.os.Bundle;
 import android.util.DisplayMetrics;
 
 import android.util.Size;
