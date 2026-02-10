@@ -313,7 +313,7 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     self.torchButton.contentEdgeInsets = UIEdgeInsetsMake(10, 10, 10, 10);
 
     [self.view addSubview:self.torchButton];
-
+    self.torchButton.hidden = YES;
     [self.view addSubview:_label1];
 
     self.imageView = [[UIImageView alloc] initWithImage:nil];
