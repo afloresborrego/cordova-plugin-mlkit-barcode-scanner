@@ -122,7 +122,7 @@ public class CaptureActivity extends AppCompatActivity implements SurfaceHolder.
         _ScaleGestureDetector = new ScaleGestureDetector(this, new ScaleListener());
 
         _TorchButton = findViewById(getResources().getIdentifier("torch_button", "id", this.getPackageName()));
-
+        _TorchButton.setVisibility(View.GONE);
         _TorchButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
