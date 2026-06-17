@@ -33,6 +33,7 @@
 
 @property(nonatomic, strong) MLKBarcodeScanner *barcodeDetector;
 @property(nonatomic, strong) UIButton *torchButton;
+@property(nonatomic, strong) UIButton *cancelButton;
 
 @end
 
@@ -56,6 +57,10 @@
 
 - (UIInterfaceOrientationMask)supportedInterfaceOrientations {
     return UIInterfaceOrientationMaskPortrait;
+}
+
+- (UIInterfaceOrientation)preferredInterfaceOrientationForPresentation {
+    return UIInterfaceOrientationPortrait;
 }
 
 - (id)initWithCoder:(NSCoder *)aDecoder {
@@ -111,6 +116,18 @@
     self.previewLayer.frame = self.view.layer.bounds;
     self.previewLayer.position = CGPointMake(CGRectGetMidX(self.previewLayer.frame),
                                              CGRectGetMidY(self.previewLayer.frame));
+
+    // Position buttons against the controller's own view, not [UIScreen mainScreen]:
+    // on iPad the screen bounds don't match this portrait-locked view and the
+    // buttons fell outside the tappable area.
+    CGFloat viewWidth = self.view.bounds.size.width;
+    CGFloat viewHeight = self.view.bounds.size.height;
+    CGFloat buttonSize = 45.0;
+    CGFloat frameWidth = viewWidth * _scanAreaSize;
+    CGFloat buttonOffset = (viewWidth / 2 - frameWidth / 2) / 2 - buttonSize / 2;
+
+    self.cancelButton.frame = CGRectMake(buttonOffset, viewHeight - buttonOffset - buttonSize, buttonSize, buttonSize);
+    self.torchButton.frame = CGRectMake(viewWidth - buttonOffset - buttonSize, viewHeight - buttonOffset - buttonSize, buttonSize, buttonSize);
 }
 
 - (void)viewDidUnload {
@@ -120,10 +137,22 @@
 
 - (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
-    //Force portrait orientation.
-    [[UIDevice currentDevice] setValue:
-     [NSNumber numberWithInteger: UIInterfaceOrientationPortrait]
-                                forKey:@"orientation"];
+
+    // Force portrait orientation.
+    if (@available(iOS 16.0, *)) {
+        UIWindowScene *scene = self.view.window.windowScene;
+        if (scene) {
+            UIWindowSceneGeometryPreferencesIOS *prefs =
+                [[UIWindowSceneGeometryPreferencesIOS alloc]
+                    initWithInterfaceOrientations:UIInterfaceOrientationMaskPortrait];
+            [scene requestGeometryUpdateWithPreferences:prefs errorHandler:nil];
+        }
+        [self setNeedsUpdateOfSupportedInterfaceOrientations];
+    } else {
+        [[UIDevice currentDevice] setValue:
+         [NSNumber numberWithInteger: UIInterfaceOrientationPortrait]
+                                    forKey:@"orientation"];
+    }
 
     [self.session startRunning];
 
@@ -266,8 +295,8 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
 
     CGFloat buttonSize = 45.0;
 
-    UIButton *_cancelButton = [[UIButton alloc] init];
-    [_cancelButton addTarget:self
+    self.cancelButton = [[UIButton alloc] init];
+    [self.cancelButton addTarget:self
                       action:@selector(closeView:)
             forControlEvents:UIControlEventTouchUpInside];
 
@@ -276,19 +305,19 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     NSURL *cancelImageUrl = [NSURL URLWithString:cancelBase64String];
     NSData *cancelImageData = [NSData dataWithContentsOfURL:cancelImageUrl];
     UIImage *cancelIcon = [UIImage imageWithData:cancelImageData];
-    [_cancelButton setImage:cancelIcon
+    [self.cancelButton setImage:cancelIcon
                    forState:UIControlStateNormal];
 
     CGFloat screenOffset = (screenWidth/2 - frameWidth/2)/2 - buttonSize/2;
     NSLog(@"screenOffset %f", screenOffset);
 
-    _cancelButton.frame = CGRectMake(screenOffset, screenHeight-screenOffset-buttonSize, buttonSize, buttonSize);
-    _cancelButton.backgroundColor = [UIColor colorWithWhite:1 alpha:0.4];
-    _cancelButton.transform=CGAffineTransformMakeRotation(M_PI / 2);
-    _cancelButton.layer.cornerRadius = buttonSize/2;
-    _cancelButton.contentEdgeInsets = UIEdgeInsetsMake(15, 15, 15, 15);
+    self.cancelButton.frame = CGRectMake(screenOffset, screenHeight-screenOffset-buttonSize, buttonSize, buttonSize);
+    self.cancelButton.backgroundColor = [UIColor colorWithWhite:1 alpha:0.4];
+    self.cancelButton.transform=CGAffineTransformMakeRotation(M_PI / 2);
+    self.cancelButton.layer.cornerRadius = buttonSize/2;
+    self.cancelButton.contentEdgeInsets = UIEdgeInsetsMake(15, 15, 15, 15);
 
-    [self.view addSubview:_cancelButton];
+    [self.view addSubview:self.cancelButton];
 
 
 
